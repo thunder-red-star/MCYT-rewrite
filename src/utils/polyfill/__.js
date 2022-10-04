@@ -1,3 +1,9 @@
+import os from 'node:os';
+
+function deleteFirstChar(str) {
+	return str.slice(1);
+}
+
 export function __({ url = import.meta.url }) {
 	const u = new URL(url);
 	const f = u.protocol === 'file:' ? u.pathname : url;
@@ -5,10 +11,10 @@ export function __({ url = import.meta.url }) {
 	return {
 		d,
 		f,
-		dirname: d.split("").slice(1).join(""),
-		filename: f.split("").slice(1).join(""),
-		__dirname: d.split("").slice(1).join(""),
-		__filename: f.split("").slice(1).join(""),
+		dirname: (os.platform() === 'win32' ? deleteFirstChar(d) : d),
+		filename: (os.platform() === 'win32' ? deleteFirstChar(f) : f),
+		__dirname: (os.platform() === 'win32' ? deleteFirstChar(d) : d),
+		__filename: (os.platform() === 'win32' ? deleteFirstChar(f) : f),
 	};
 }
 
