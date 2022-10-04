@@ -1,17 +1,30 @@
 // Index.js for MCYT Bot rewrite
 // Creates shard manager and runs bot from bot.js.
+import "./utils/logger/ignoreTerminalSpam.js";
 
 import { ShardingManager } from 'discord.js';
-import { token } from './config/config.json';
-import Logger from './util/logger/index.cjs';
+import Logger from './utils/logger/index.js';
 import fs from 'fs';
 import path from 'path';
+import {__} from "./utils/polyfill/__.js";
+const { __filename, __dirname } = __(import.meta);
 
-// Dirname polyfill
-const __dirname = new URL('.', import.meta.url).pathname;
+// Open config file and parse it
+const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config', 'config.json'), 'utf8'));
 
-global.logger = new Logger(path.join(__dirname, 'logs'));
+const manager = new ShardingManager(path.join(__dirname, 'bot.js'), {
+	token: config.token,
+	totalShards: config.shards,
+});
 
-const manager = new ShardingManager('./bot.js', { token: token });
+manager.spawn({
+	timeout: 30_000,
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
+});
 
-manager.on('shardCreate', (shard) => logger.info(`Launched shard ${shard.id}`));
+// Log unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+	console.error(err);
+});

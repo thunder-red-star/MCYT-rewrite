@@ -1,6 +1,6 @@
-const fs = require('fs');
-const path = require('path');
-const chalk = require('chalk');
+import * as fs from 'fs';
+import * as path from 'path';
+import chalk from 'chalk';
 
 let leftPad = (str, len, char) => {
 	str = str.toString();
@@ -11,7 +11,7 @@ let leftPad = (str, len, char) => {
 }
 
 class Logger {
-	constructor(logDir) {
+	constructor(logDir, level = 'info') {
 		this._logs = [];
 		// Check if there's a logs folder
 		if (!fs.existsSync(logDir)) {
@@ -23,32 +23,35 @@ class Logger {
 		const dateString = `${date.getFullYear()}-${leftPad(date.getMonth() + 1, 2, '0')}-${leftPad(date.getDate(), 2, '0')}`;
 		// While the log file exists, add a number to the end of the file name
 		let i = 1;
-		let logFileName = `${dateString}.log`;
-		while (fs.existsSync(path.join(logDir, logFileName))) {
-			logFileName = `${dateString}-${i}.log`;
-			i++;
-		}
+		let logFileName = `latest.log`;
 		// Create the log file
 		this._logFile = fs.createWriteStream(path.join(logDir, logFileName), {flags: 'a'});
-		// Log the start of the server
+		// Set log level
+		this._level = level;
 	}
 
 	// Debug log
 	debug(message) {
 		// Log the message
-		this._log(message, 'debug');
+		if (this._level === 'debug') {
+			this._log(message, 'debug');
+		}
 	}
 
 	// Info log
 	info(message) {
 		// Log the message
-		this._log(message, 'info');
+		if (this._level === 'debug' || this._level === 'info') {
+			this._log(message, 'info');
+		}
 	}
 
 	// Warning log
 	warn(message) {
 		// Log the message
-		this._log(message, 'warn');
+		if (this._level === 'debug' || this._level === 'info' || this._level === 'warn') {
+			this._log(message, 'warn');
+		}
 	}
 
 	// Error log
@@ -154,4 +157,4 @@ class Logger {
 	}
 }
 
-module.exports = Logger;
+export default Logger;

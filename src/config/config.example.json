@@ -1,0 +1,5 @@
+{
+  "token": "YOUR_SECRET_BOT_TOKEN_HERE",
+  "totalShards": "auto",
+  "messageCommandPrefix": "!",
+}
