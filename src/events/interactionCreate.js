@@ -90,7 +90,7 @@ export default async function messageCreate(client, Discord, interaction) {
 	userCooldown.timestamp = Date.now();
 	// Execute the command
 	try {
-		await command.execute(interaction, client, Discord);
+		await command.execute(interaction, interaction.client, Discord);
 		global.logger.info(`[${client.shard.ids[0] + 1}] Command ${command.name} by ${interaction.user.tag} (${interaction.user.id}) executed successfully.`);
 	} catch (error) {
 		global.logger.logRaw(error.stack);
@@ -98,9 +98,9 @@ export default async function messageCreate(client, Discord, interaction) {
 		let errorId = await global.database.error.get.by({ messageId: interaction.id });
 		if (errorId) errorId = errorId._id;
 		try {
-			await interaction.reply({content: `<cross:${global.config.emojis.cross}> An error occurred while executing this command. Please refer to this error ID: \`${errorId}\`. You can report this error to the bot owner by joining the support server or by using the \`report\` command. You may be DMed on the status of the error.`, ephemeral: true});
+			await interaction.reply({content: `<:cross:${global.config.emojis.cross}> An error occurred while executing this command. Please refer to this error ID: \`${errorId}\`. You can report this error to the bot owner by joining the support server or by using the \`report\` command. You may be DMed on the status of the error.`, ephemeral: true});
 		} catch (error) {
-			await interaction.editReply({content: `<cross:${global.config.emojis.cross}> An error occurred while executing this command. Please refer to this error ID: \`${errorId}\`. You can report this error to the bot owner by joining the support server or by using the \`report\` command. You may be DMed on the status of the error.`, ephemeral: true});
+			await interaction.editReply({content: `<:cross:${global.config.emojis.cross}> An error occurred while executing this command. Please refer to this error ID: \`${errorId}\`. You can report this error to the bot owner by joining the support server or by using the \`report\` command. You may be DMed on the status of the error.`, ephemeral: true});
 		}
 	}
 

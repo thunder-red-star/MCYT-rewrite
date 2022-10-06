@@ -8,11 +8,19 @@ function convertToSlashCommand(command) {
 		.setDescription(command.shortDescription)
 	for (const arg of command.arguments) {
 		if (arg.type === "string") {
-			slashCommand.addStringOption(option => option
-				.setName(arg.name)
-				.setDescription(arg.description)
-				.setRequired(arg.required)
-				.addChoices(arg.choices.map(choice => [choice.name, choice.value])));
+			slashCommand.addStringOption((option) => {
+				option.setName(arg.name)
+					.setDescription(arg.description)
+					.setRequired(arg.required);
+				/*
+				if (arg.choices.length > 0) {
+					for (const choice of arg.choices) {
+						option.addChoice(choice.name, choice.value);
+					}
+				}
+				 */
+				return option;
+			});
 		} else if (arg.type === "number") {
 			slashCommand.addIntegerOption(option => option
 				.setName(arg.name)
@@ -35,11 +43,15 @@ function convertToSlashCommand(command) {
 				.setDescription(arg.description)
 				.setRequired(arg.required));
 		} else {
-			slashCommand.addStringOption(option => option
-				.setName(arg.name)
-				.setDescription(arg.description)
-				.setRequired(arg.required)
-				.addChoices(arg.choices.map(choice => [choice.name, choice.value])));
+			slashCommand.addStringOption((option) => {
+				option.setName(arg.name)
+					.setDescription(arg.description)
+					.setRequired(arg.required);
+				if (arg.choices) {
+					option.addChoices(arg.choices.map(choice => [choice.name, choice.value]));
+				}
+				return option;
+			});
 		}
 	}
 	return slashCommand;

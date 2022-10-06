@@ -53,27 +53,22 @@ const searchButton = new Builders.ButtonBuilder()
 const blankButton1 = new Builders.ButtonBuilder()
 	.setLabel(" ")
 	.setStyle(2)
-	.setDisabled(true)
 	.setCustomId("blank1");
 
 const blankButton2 = new Builders.ButtonBuilder()
 	.setLabel(" ")
 	.setStyle(2)
-	.setDisabled(true)
 	.setCustomId("blank2");
 
 const blankButton3 = new Builders.ButtonBuilder()
 	.setLabel(" ")
 	.setStyle(2)
-	.setDisabled(true)
 	.setCustomId("blank3");
 
 const blankButton4 = new Builders.ButtonBuilder()
 	.setLabel(" ")
 	.setStyle(2)
-	.setDisabled(true)
 	.setCustomId("blank4");
-
 
 let row1 = [
 	firstButton,
@@ -91,13 +86,9 @@ let row2 = [
 	blankButton4
 ]
 
-export default async function(message, pages) {
-	// Message should be a Discord.Message
-	// Pages should be an array of Discord.Embeds or Builders.Embed
-	let titles = [];
-	for (let i = 0; i < pages.length; i++) {
-		titles.push(pages[i].data.title || null);
-	}
+export default async function(interaction, pages) {
+	// Message should be a Discord.CommandInteraction
+	// Pages should be an array of Discord.Embeds or Builders.EmbedBuilder
 
 	let actionRow1 = new Builders.ActionRowBuilder();
 	let actionRow2 = new Builders.ActionRowBuilder();
@@ -119,15 +110,8 @@ export default async function(message, pages) {
 	for (let i = 0; i < row2.length; i++) {
 		actionRow2.addComponents([row2[i]]);
 	}
-
-	// Send the page with the array of buttons
-	let msg = await message.reply({
-		content: "Loading...",
-	})
-
-
-	// Send the first page
-	await msg.edit({
+	await interaction.deferReply();
+	let reply = await interaction.editReply({
 		content: `Page ${page + 1} of ${pages.length}`,
 		embeds: [pages[page]],
 		components: [actionRow1, actionRow2]
@@ -135,17 +119,16 @@ export default async function(message, pages) {
 
 	// Create the button collector
 	const filter = (button) => {
-		button.user.id === message.author.id;
+		button.user.id === interaction.user.id;
 	};
 
-	const collector = await msg.createMessageComponentCollector(filter, {
+	const collector = await reply.createMessageComponentCollector(filter, {
 		filter,
 		timeout: 60000
 	});
 
-	// Add the button collector event listeners
-	collector.on('collect', async (button) => {
-		if (button.user.id !== message.author.id) return;
+	collector.on("collect", async (button) => {
+		if (button.user.id !== interaction.user.id) return;
 		switch (button.customId) {
 			case 'first':
 				page = 0;
@@ -186,7 +169,7 @@ export default async function(message, pages) {
 
 				// Send the modal
 				await button.showModal(searchModal);
-				let modalSubmission = await button.awaitModalSubmit({ time: 15_000, max: 1 });
+				let modalSubmission = await button.awaitModalSubmit({time: 15_000, max: 1});
 				if (!modalSubmission) {
 					await button.reply({
 						content: "Timed out",
@@ -208,7 +191,7 @@ export default async function(message, pages) {
 						}
 						if (!found) {
 							await modalSubmission.reply({
-								content: "No pages found",
+								content: "No page found",
 								ephemeral: true
 							});
 							return;
@@ -217,7 +200,7 @@ export default async function(message, pages) {
 						// Search for the page number
 						if (input > pages.length || input < 1) {
 							await modalSubmission.reply({
-								content: "No pages found",
+								content: "No page found",
 								ephemeral: true
 							});
 							return;
@@ -251,7 +234,7 @@ export default async function(message, pages) {
 					});
 
 					// Send the new page
-					await msg.edit({
+					await interaction.editReply({
 						content: `Page ${page + 1} of ${pages.length}`,
 						embeds: [pages[page]],
 						components: [actionRow1, actionRow2]
@@ -263,12 +246,10 @@ export default async function(message, pages) {
 		try {
 			await button.deferUpdate();
 		} catch (e) {
-			// Ignore as we just searched for a page
+			// Ignore
 		}
 
-		// Reset the timeout
-		collector.resetTimer();
-
+		// Update the page
 		let actionRow1 = new Builders.ActionRowBuilder();
 		let actionRow2 = new Builders.ActionRowBuilder();
 		for (let i = 0; i < row1.length; i++) {
@@ -290,7 +271,7 @@ export default async function(message, pages) {
 		}
 
 		// Send the new page
-		await msg.edit({
+		await interaction.editReply({
 			content: `Page ${page + 1} of ${pages.length}`,
 			embeds: [pages[page]],
 			components: [actionRow1, actionRow2]
@@ -317,7 +298,7 @@ export default async function(message, pages) {
 			}
 
 			// Send the new page
-			await msg.edit({
+			await interaction.editReply({
 				content: `Page ${page + 1} of ${pages.length}`,
 				embeds: [pages[page]],
 				components: [actionRow1, actionRow2]
@@ -326,6 +307,4 @@ export default async function(message, pages) {
 			// Do nothing since message was deleted
 		}
 	});
-
-	return msg;
-}
+};
