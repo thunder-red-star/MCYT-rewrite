@@ -1,5 +1,9 @@
 {
   "token": "YOUR_SECRET_BOT_TOKEN_HERE",
   "totalShards": "auto",
-  "messageCommandPrefix": "!",
+  "defaultPrefix": "!",
+  "mongodbConnectionString": "YOUR_MONGODB_CONNECTION_STRING_HERE",
+  "owners": [
+    "YOUR_USER_ID_HERE"
+  ]
 }
