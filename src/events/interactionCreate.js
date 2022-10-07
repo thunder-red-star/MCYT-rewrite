@@ -1,3 +1,5 @@
+import createInteractionError from '../utils/error/createInteractionError.js';
+
 export default async function messageCreate(client, Discord, interaction) {
 	// Interaction is not a command
 	if (!interaction.isCommand()) {
@@ -34,7 +36,7 @@ export default async function messageCreate(client, Discord, interaction) {
 		if (!interaction.member.permissions.has(permission)) missingPermissions.push(permission);
 	}
 	if (missingPermissions.length > 0) {
-		return interaction.reply({content: `<cross:${global.config.emojis.cross}> You need the following permissions to use this command: \`${missingPermissions.join("`, `")}\``, ephemeral: true});
+		return interaction.reply({content: `<:cross:${global.config.emojis.cross}> You need the following permissions to use this command: \`${missingPermissions.join("`, `")}\``, ephemeral: true});
 	}
 
 	// Check if the bot has the required permissions
@@ -43,7 +45,7 @@ export default async function messageCreate(client, Discord, interaction) {
 		if (!interaction.guild.members.me.permissions.has(permission)) missingPermissions.push(permission);
 	}
 	if (missingPermissions.length > 0) {
-		return interaction.reply({content: `<cross:${global.config.emojis.cross}> I need the following permissions to run this command: \`${missingPermissions.join("`, `")}\``, ephemeral: true});
+		return interaction.reply({content: `<:cross:${global.config.emojis.cross}> I need the following permissions to run this command: \`${missingPermissions.join("`, `")}\``, ephemeral: true});
 	}
 
 	// Get command from cooldowns
@@ -73,14 +75,13 @@ export default async function messageCreate(client, Discord, interaction) {
 		}
 		userCooldown.messagesAttempted++;
 		const timeLeft = (userCooldown.timestamp + command.cooldown) - Date.now();
-		let msg = await interaction.reply({content: `<cross:${global.config.emojis.cross}> You can use this command again <t:${Math.round((Date.now() + timeLeft) / 1000)}:R> (cooldown: ${command.cooldown / 1000}s).`, ephemeral: true});
+		let msg = await interaction.reply({content: `<:cross:${global.config.emojis.cross}> You can use this command again <t:${Math.round((Date.now() + timeLeft) / 1000)}:R> (cooldown: ${command.cooldown / 1000}s).`, ephemeral: true});
 		// Delete the message after the timeout
 		// Delete the message after the cooldown
-		global.logger.warn(`[${client.shard.ids[0] + 1}] Command ${commandName} by ${interaction.user.tag} (${interaction.user.id}) was rate limited.`);
+		global.logger.warn(`[${client.shard.ids[0] + 1}] Command ${command.name} by ${interaction.user.tag} (${interaction.user.id}) was rate limited.`);
 		userCooldown.messagesAttempted++;
 		cooldown.set(interaction.user.id, userCooldown);
 		return userCooldown.timeout = setTimeout(() => {
-			msg.delete();
 			userCooldown.messagesAttempted = 0;
 			cooldown.set(interaction.user.id, userCooldown);
 		}, timeLeft);
@@ -90,18 +91,28 @@ export default async function messageCreate(client, Discord, interaction) {
 	userCooldown.timestamp = Date.now();
 	// Execute the command
 	try {
-		await command.execute(interaction, interaction.client, Discord);
-		global.logger.info(`[${client.shard.ids[0] + 1}] Command ${command.name} by ${interaction.user.tag} (${interaction.user.id}) executed successfully.`);
-	} catch (error) {
-		global.logger.logRaw(error.stack);
-		await global.database.error.create(interaction.guild.id, interaction.channel.id, interaction.id, interaction.user.id, command.name, command.name, error, error.stack);
-		let errorId = await global.database.error.get.by({ messageId: interaction.id });
-		if (errorId) errorId = errorId._id;
+		let subcommand;
 		try {
-			await interaction.reply({content: `<:cross:${global.config.emojis.cross}> An error occurred while executing this command. Please refer to this error ID: \`${errorId}\`. You can report this error to the bot owner by joining the support server or by using the \`report\` command. You may be DMed on the status of the error.`, ephemeral: true});
-		} catch (error) {
-			await interaction.editReply({content: `<:cross:${global.config.emojis.cross}> An error occurred while executing this command. Please refer to this error ID: \`${errorId}\`. You can report this error to the bot owner by joining the support server or by using the \`report\` command. You may be DMed on the status of the error.`, ephemeral: true});
+			subcommand = interaction.options.getSubcommand()
+		} catch (e) {
+			// no subcommand
 		}
+		if (subcommand) {
+		  // Find subcommand in subcommands array
+			const subcommand = command.subcommands.find(subcommand => subcommand.name === interaction.options.getSubcommand());
+			if (!subcommand) {
+				return;
+			} else {
+				// Execute subcommand
+				await subcommand.execute(interaction, interaction.client, Discord);
+				global.logger.info(`[${client.shard.ids[0] + 1}] Command ${command.name} subcommand ${subcommand.name} by ${interaction.user.tag} (${interaction.user.id}) executed successfully.`);
+			}
+		} else {
+			await command.execute(interaction, interaction.client, Discord);
+			global.logger.info(`[${client.shard.ids[0] + 1}] Command ${command.name} by ${interaction.user.tag} (${interaction.user.id}) executed successfully.`);
+		}
+	} catch (error) {
+		await createInteractionError(error, interaction, command);
 	}
 
 	// Put the user back in cooldowns

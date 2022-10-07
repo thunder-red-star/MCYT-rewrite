@@ -1,4 +1,5 @@
 import argParser from "../utils/parsing/argParser.js";
+import createMessageError from "../utils/error/createMessageError.js";
 
 export default async function messageCreate(client, Discord, message) {
 	// Ignore messages from bots and webhooks
@@ -71,9 +72,7 @@ export default async function messageCreate(client, Discord, message) {
 	// If the user isn't in cooldowns, add them
 	if (!userCooldown) {
 		userCooldown = {
-			timestamp: 0,
-			timeout: null,
-			messagesAttempted: 0
+			timestamp: 0, timeout: null, messagesAttempted: 0
 		};
 		cooldown.set(message.author.id, userCooldown);
 	}
@@ -110,12 +109,7 @@ export default async function messageCreate(client, Discord, message) {
 		await command.execute(message, client, parsedArgs, Discord);
 		global.logger.info(`[${client.shard.ids[0] + 1}] Command ${commandName} executed by ${message.author.tag} (${message.author.id}) in ${message.guild ? message.guild.name : "DMs"}`);
 	} catch (error) {
-		global.logger.logRaw(error.stack);
-		await global.database.error.create(message.guild.id, message.channel.id, message.id, message.author.id, commandName, message.content, error.toString(), error.stack);
-		let errorId = await global.database.error.get.by({messageId: message.id});
-		if (errorId) errorId = errorId._id;
-		global.logger.error(client.shard.ids[0] + 1 + "An error occurred running command " + commandName + ". Error ID: " + errorId);
-		message.reply({content: `<:cross:${global.config.emojis.cross}> An error occurred running this command. Please refer to this error ID: \`${errorId}\`. You can report this error to the bot owner by joining the support server or by using the \`report\` command. You may be DMed on the status of the error.`});
+		await createMessageError(error, message, command);
 	}
 
 	// Put command in cooldowns

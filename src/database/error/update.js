@@ -7,11 +7,18 @@ export default {
 	 * @param update {Object} The update to make
 	 * @returns {Object} The guild object
 	 */
-	by: (id, update) => {
-		let newGuildObject = {
-			_id: id,
-			...update
+	by: async (id, update) => {
+		// Get old error object
+		let oldErrorObject = await ErrorSchema.findOne({ _id: id });
+		// Make new error object with old object and new update
+		let newErrorObject = {};
+		for (let key in oldErrorObject._doc) {
+			newErrorObject[key] = oldErrorObject[key];
 		}
-		return ErrorSchema.findOneAndUpdate({ _id: id }, newGuildObject, { upsert: true, new: true });
+		for (let key in update) {
+			newErrorObject[key] = update[key];
+		}
+		// Update error in database
+		return ErrorSchema.findOneAndUpdate({ _id: id }, newErrorObject, { upsert: true, new: true });
 	}
 }

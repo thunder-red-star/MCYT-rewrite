@@ -87,9 +87,10 @@ let row2 = [
 ]
 
 export default async function(interaction, pages) {
-	// Message should be a Discord.CommandInteraction
-	// Pages should be an array of Discord.Embeds or Builders.EmbedBuilder
-
+	let titles = [];
+	for (let i = 0; i < pages.length; i++) {
+		titles.push(pages[i].data.title || null);
+	}
 	let actionRow1 = new Builders.ActionRowBuilder();
 	let actionRow2 = new Builders.ActionRowBuilder();
 	let page = 0;
@@ -110,7 +111,11 @@ export default async function(interaction, pages) {
 	for (let i = 0; i < row2.length; i++) {
 		actionRow2.addComponents([row2[i]]);
 	}
-	await interaction.deferReply();
+	try {
+		await interaction.deferReply();
+	} catch (error) {
+		// Do nothing
+	}
 	let reply = await interaction.editReply({
 		content: `Page ${page + 1} of ${pages.length}`,
 		embeds: [pages[page]],
@@ -129,6 +134,8 @@ export default async function(interaction, pages) {
 
 	collector.on("collect", async (button) => {
 		if (button.user.id !== interaction.user.id) return;
+		// Reset the button collector timeout
+		collector.resetTimer();
 		switch (button.customId) {
 			case 'first':
 				page = 0;

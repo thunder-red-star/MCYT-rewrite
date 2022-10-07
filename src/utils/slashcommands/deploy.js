@@ -2,56 +2,223 @@ import {REST} from '@discordjs/rest' ;
 import {Routes} from 'discord-api-types/v9' ;
 import {SlashCommandBuilder} from '@discordjs/builders';
 
+function addSubcommand(subcommand, command) {
+	subcommand
+		.setName(command.name)
+		.setDescription(command.shortDescription)
+
+	for (const argument of command.arguments) {
+		if (argument.type === "string") {
+			subcommand.addStringOption((option) => {
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				if (argument.choices) {
+					for (const choice of argument.choices) {
+						option.addChoices(choice);
+					}
+				}
+
+				return option;
+			});
+		} else if (argument.type === "number") {
+			subcommand.addNumberOption((option) => {
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				if (argument.choices) {
+					for (const choice of argument.choices) {
+						option.addChoices({
+							name: choice.name, value: choice.value
+						})
+					}
+				}
+
+				return option;
+			});
+		} else if (argument.type === "boolean") {
+			subcommand.addBooleanOption((option) => {
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				if (argument.choices) {
+					for (const choice of argument.choices) {
+						option.addChoices({
+							name: choice.name, value: choice.value
+						})
+					}
+				}
+
+				return option;
+			});
+		} else if (argument.type === "user") {
+			subcommand.addUserOption((option) => {
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				if (argument.choices) {
+					for (const choice of argument.choices) {
+						option.addChoices({
+							name: choice.name, value: choice.value
+						})
+					}
+				}
+
+				return option;
+			});
+		} else if (argument.type === "channel") {
+			subcommand.addChannelOption((option) => {
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				if (argument.choices) {
+					for (const choice of argument.choices) {
+						option.addChoices({
+							name: choice.name, value: choice.value
+						})
+					}
+				}
+
+				return option;
+			});
+		} else if (argument.type === "role") {
+			subcommand.addRoleOption((option) => {
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				if (argument.choices) {
+					for (const choice of argument.choices) {
+						option.addChoices({
+							name: choice.name, value: choice.value
+						})
+					}
+				}
+
+				return option;
+			});
+		} else if (argument.type === "mentionable") {
+			subcommand.addMentionableOption((option) => {
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				if (argument.choices) {
+					for (const choice of argument.choices) {
+						option.addChoices({
+							name: choice.name, value: choice.value
+						})
+					}
+				}
+
+				return option;
+			});
+		} else {
+			throw new Error(`Unknown argument type: ${argument.type}`);
+		}
+	}
+
+	return subcommand;
+}
+
 function convertToSlashCommand(command) {
 	const slashCommand = new SlashCommandBuilder()
 		.setName(command.name)
 		.setDescription(command.shortDescription)
-	for (const arg of command.arguments) {
-		if (arg.type === "string") {
+	if (command.subcommands) {
+		for (const subcommand of command.subcommands) {
+			slashCommand.addSubcommand((s) => {
+				return addSubcommand(s, subcommand);
+			});
+		}
+	}
+	// Create option-builder for each argument
+	for (const argument of command.arguments) {
+		if (argument.type === "string") {
 			slashCommand.addStringOption((option) => {
-				option.setName(arg.name)
-					.setDescription(arg.description)
-					.setRequired(arg.required);
-				/*
-				if (arg.choices.length > 0) {
-					for (const choice of arg.choices) {
-						option.addChoice(choice.name, choice.value);
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				if (argument.choices) {
+					for (const choice of argument.choices) {
+						option.addChoices(choice);
 					}
 				}
-				 */
+
 				return option;
 			});
-		} else if (arg.type === "number") {
-			slashCommand.addIntegerOption(option => option
-				.setName(arg.name)
-				.setDescription(arg.description)
-				.setRequired(arg.required)
-				.addChoices(arg.choices.map(choice => [choice.name, choice.value])));
-		} else if (arg.type === "boolean") {
-			slashCommand.addBooleanOption(option => option
-				.setName(arg.name)
-				.setDescription(arg.description)
-				.setRequired(arg.required));
-		} else if (arg.type === "user") {
-			slashCommand.addUserOption(option => option
-				.setName(arg.name)
-				.setDescription(arg.description)
-				.setRequired(arg.required));
-		} else if (arg.type === "channel") {
-			slashCommand.addChannelOption(option => option
-				.setName(arg.name)
-				.setDescription(arg.description)
-				.setRequired(arg.required));
-		} else {
-			slashCommand.addStringOption((option) => {
-				option.setName(arg.name)
-					.setDescription(arg.description)
-					.setRequired(arg.required);
-				if (arg.choices) {
-					option.addChoices(arg.choices.map(choice => [choice.name, choice.value]));
+		} else if (argument.type === "number") {
+			slashCommand.addNumberOption((option) => {
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				if (argument.choices) {
+					for (const choice of argument.choices) {
+						option.addChoices({
+							name: choice.name, value: choice.value
+						})
+					}
 				}
+
 				return option;
 			});
+		} else if (argument.type === "boolean") {
+			slashCommand.addBooleanOption((option) => {
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				if (argument.choices) {
+					for (const choice of argument.choices) {
+						option.addChoices({
+							name: choice.name, value: choice.value
+						})
+					}
+				}
+
+				return option;
+			});
+		} else if (argument.type === "user") {
+			slashCommand.addUserOption((option) => {
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				return option;
+			});
+		} else if (argument.type === "channel") {
+			slashCommand.addChannelOption((option) => {
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				return option;
+			});
+		} else if (argument.type === "role") {
+			slashCommand.addRoleOption((option) => {
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				return option;
+			});
+		} else if (argument.type === "mentionable") {
+			slashCommand.addMentionableOption((option) => {
+				option.setName(argument.name)
+					.setDescription(argument.description)
+					.setRequired(argument.required)
+
+				return option;
+			});
+		} else {
+			throw new Error(`Unknown argument type: ${argument.type}`);
 		}
 	}
 	return slashCommand;

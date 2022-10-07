@@ -146,6 +146,7 @@ export default async function(message, pages) {
 	// Add the button collector event listeners
 	collector.on('collect', async (button) => {
 		if (button.user.id !== message.author.id) return;
+		collector.resetTimer();
 		switch (button.customId) {
 			case 'first':
 				page = 0;

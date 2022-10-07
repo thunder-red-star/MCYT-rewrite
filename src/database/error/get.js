@@ -18,5 +18,10 @@ export default {
 
 	one: (id) => {
 		return ErrorSchema.findOne({ _id: id });
+	},
+
+	all: () => {
+		// Get all errors
+		return ErrorSchema.find({});
 	}
 }

@@ -31,6 +31,12 @@ export default {
 	userPermissions: [],
 	cooldown: 5_000,
 	execute: async function(interaction, client, args, Discord) {
+		// Get guild prefix
+		let prefix = global.config.prefix;
+		if (interaction.guild) {
+			const guild = await global.database.guild.get.by({ _id: interaction.guild.id });
+			if (guild) prefix = guild.prefix;
+		}
 		// Is a command specified?
 		if (interaction.options.getString("command")) {
 			// Get command
@@ -106,7 +112,7 @@ export default {
 							.setColor(global.config.colors.default)
 							.setTitle(`Commands in ${category} (${i + 1}-${i + 10})`)
 							.setFooter({
-								text: `Not seeing a command? Maybe it's a slash command! Try /help!`
+								text: `Not seeing a command? Maybe it's a message command! Try ${prefix}help`,
 							});
 						for (let command of currentCommands) {
 							embed.addFields([{
@@ -122,7 +128,7 @@ export default {
 						.setColor(global.config.colors.default)
 						.setTitle(`Commands in ${category}`)
 						.setFooter({
-							text: `Not seeing a command? Maybe it's a slash command! Try /help!`
+							text: `Not seeing a command? Maybe it's a message command! Try ${prefix}help`,
 						});
 					for (let command of commands) {
 						embed.addFields([{
