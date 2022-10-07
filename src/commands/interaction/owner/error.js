@@ -193,7 +193,7 @@ export default {
 					for (let i = 0; i < errors.length; i += 10) {
 						let embed = new Builders.EmbedBuilder()
 							.setColor(global.config.colors.error)
-							.setTitle("Errors")
+							.setTitle("Errors (page " + (i / 10 + 1) + ")")
 							.setDescription(`There are ${errors.length} errors.`);
 						for (let j = i; j < i + 10; j++) {
 							let error = errors[j];

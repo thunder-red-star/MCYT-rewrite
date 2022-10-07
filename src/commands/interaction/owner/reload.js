@@ -19,17 +19,19 @@ export default {
 	cooldown: 5_000,
 	execute: async function (interaction, client, args, Discord) {
 		// Get command
+		await interaction.deferReply();
 		const command = interaction.options.getString("command");
 		// Check if command exists
 		if (!client.interactionCommands.has(command)) {
 			const embed = new Builders.EmbedBuilder()
 				.setColor(global.config.colors.error)
 				.setDescription(`<:error:${global.config.emojis.error}> Command \`${command}\` does not exist.`);
-			return interaction.reply({embeds: [embed]});
+			return interaction.editReply({embeds: [embed]});
 		}
 		try {
 			// Find command file
 			let commandFile = null;
+			let directoryName = null;
 			let directories = fs.readdirSync(path.join(__dirname, ".."));
 			for (let i = 0; i < directories.length; i++) {
 				const directory = directories[i];
@@ -38,6 +40,7 @@ export default {
 					const file = files[j];
 					if (file === `${command}.js`) {
 						commandFile = path.join(__dirname, "..", directory, file);
+						directoryName = directory;
 						break;
 					}
 				}
@@ -46,16 +49,28 @@ export default {
 			if (!commandFile) {
 				const embed = new Builders.EmbedBuilder()
 					.setColor(global.config.colors.error)
-					.setDescription(`<:error:${global.config.emojis.error}> Command \`${command}\` does not exist.`);
-				return interaction.reply({embeds: [embed]});
+					.setDescription(`<:cross:${global.config.emojis.cross}> Command \`${command}\` does not exist.`);
+				await interaction.editReply({embeds: [embed]});
+				return;
 			}
 
+			client.interactionCommands.delete(command);
+			// Put the new version in
+			const newCommand = await import("file://" + commandFile);
+			client.interactionCommands.set(command, newCommand.default);
+
+			// Send success message
+			const embed = new Builders.EmbedBuilder()
+				.setColor(global.config.colors.success)
+				.setDescription(`<:check:${global.config.emojis.check}> Command \`${command}\` has been reloaded.`);
+			await interaction.editReply({embeds: [embed]});
 		} catch (error) {
 			global.logger.logRaw(error);
 			const embed = new Builders.EmbedBuilder()
 				.setColor(global.config.colors.error)
-				.setDescription(`<:error:${global.config.emojis.error}> An error occurred while reloading command \`${command}\`.`);
-			return interaction.reply({embeds: [embed]});
+				.setDescription(`<:cross:${global.config.emojis.cross}> An error occurred while reloading command \`${command}\`.`);
+			await interaction.editReply({embeds: [embed]});
+			return;
 		}
 	}
 }
