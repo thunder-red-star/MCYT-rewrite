@@ -105,6 +105,11 @@ export default async function messageCreate(client, Discord, message) {
 					content: `<:cross:${global.config.emojis.cross}> Missing required argument \`${arg.name}\` of type \`${arg.type}\`.`
 				});
 			}
+			if (arg.choices && arg.choices.length > 0 && !arg.choices.includes(parsedArgs[arg.name])) {
+				return message.channel.send({
+					content: `<:cross:${global.config.emojis.cross}> Invalid choice for argument \`${arg.name}\`. Must be one of \`${arg.choices.join("`, `")}\`.`
+				});
+			}
 		}
 		await command.execute(message, client, parsedArgs, Discord);
 		global.logger.info(`[${client.shard.ids[0] + 1}] Command ${commandName} executed by ${message.author.tag} (${message.author.id}) in ${message.guild ? message.guild.name : "DMs"}`);

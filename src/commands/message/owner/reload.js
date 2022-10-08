@@ -1,8 +1,5 @@
 import * as Builders from '@discordjs/builders';
-import fs from 'fs';
-import path from 'path';
-import { __ } from '../../../utils/polyfill/__.js';
-const { __filename, __dirname } = __(import.meta);
+import ms from 'ms';
 
 export default {
 	name: "reload",
@@ -10,23 +7,27 @@ export default {
 	ownerOnly: true,
 	guildOnly: false,
 	shortDescription: "Reload a command",
-	longDescription: "Reload a command file, updating the command's backend without restarting the bot.",
-	arguments: [{
-		name: "command", description: "The command to reload", type: "string", required: true
-	}],
+	longDescription: "Reload a message command file, updating the command's backend without restarting the bot.",
+	arguments: [
+		{
+			name: "command",
+			description: "The command to reload",
+			type: "string",
+			required: true
+		}
+	],
 	botPermissions: ["SEND_MESSAGES", "EMBED_LINKS"],
-	userPermissions: ["MANAGE_GUILD"],
-	cooldown: 5_000,
-	execute: async function (interaction, client, args, Discord) {
+	userPermissions: [],
+	cooldown: 0,
+	execute: async function (message, client, args, Discord) {
 		// Get command
-		await interaction.deferReply();
-		const command = interaction.options.getString("command");
+		const command = args["command"];
 		// Check if command exists
-		if (!client.interactionCommands.has(command)) {
+		if (!client.messageCommands.has(command)) {
 			const embed = new Builders.EmbedBuilder()
 				.setColor(global.config.colors.error)
-				.setDescription(`<:error:${global.config.emojis.error}> Command \`${command}\` does not exist.`);
-			return interaction.editReply({embeds: [embed]});
+				.setDescription(`<:cross:${global.config.emojis.cross}> Command \`${command}\` does not exist.`);
+			return message.reply({embeds: [embed]});
 		}
 		try {
 			// Find command file
@@ -50,26 +51,27 @@ export default {
 				const embed = new Builders.EmbedBuilder()
 					.setColor(global.config.colors.error)
 					.setDescription(`<:cross:${global.config.emojis.cross}> Command \`${command}\` does not exist.`);
-				await interaction.editReply({embeds: [embed]});
+				await message.reply({embeds: [embed]});
 				return;
 			}
 
-			client.interactionCommands.delete(command);
+			client.messageCommands.delete(command);
 			// Put the new version in
 			const newCommand = await import("file://" + commandFile);
-			client.interactionCommands.set(command, newCommand.default);
-
-			// Send success message
+			client.messageCommands.set(command, newCommand.default);
+			// Log
 			const embed = new Builders.EmbedBuilder()
 				.setColor(global.config.colors.success)
-				.setDescription(`<:check:${global.config.emojis.check}> Command \`${command}\` has been reloaded.`);
-			await interaction.editReply({embeds: [embed]});
+				.setDescription(`<:check:${global.config.emojis.check}> Command \`${command}\` reloaded.`);
+			await message.reply({embeds: [embed]});
 		} catch (error) {
-			global.logger.logRaw(error);
+			// Log error
+			console.error(error);
+			// Send error message
 			const embed = new Builders.EmbedBuilder()
 				.setColor(global.config.colors.error)
 				.setDescription(`<:cross:${global.config.emojis.cross}> An error occurred while reloading command \`${command}\`.`);
-			await interaction.editReply({embeds: [embed]});
+			await message.reply({embeds: [embed]});
 		}
 	}
 }

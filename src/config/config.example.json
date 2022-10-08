@@ -5,5 +5,26 @@
   "mongodbConnectionString": "YOUR_MONGODB_CONNECTION_STRING_HERE",
   "owners": [
     "YOUR_USER_ID_HERE"
-  ]
+  ],
+  "supportServer": "YOUR_SUPPORT_SERVER_INVITE_HERE",
+  "invitePermissions": "BOT_PERMISSIONS_BITFIELD_HERE",
+  "colors": {
+    "success": 53866,
+    "warning": 16756782,
+    "error": 16330592,
+    "default": 3337719
+  },
+  "emojis": {
+    "paginator": {
+      "first": "CUSTOM_EMOJI_ID_HERE",
+      "left": "CUSTOM_EMOJI_ID_HERE",
+      "delete": "CUSTOM_EMOJI_ID_HERE",
+      "right": "CUSTOM_EMOJI_ID_HERE",
+      "last": "CUSTOM_EMOJI_ID_HERE",
+      "search": "CUSTOM_EMOJI_ID_HERE"
+    },
+    "check": "CUSTOM_EMOJI_ID_HERE",
+    "warning": "CUSTOM_EMOJI_ID_HERE",
+    "cross": "CUSTOM_EMOJI_ID_HERE"
+  }
 }
