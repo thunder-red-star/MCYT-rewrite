@@ -1,6 +1,15 @@
 // Message command paginator (use buttons)
 
 import * as Builders from "@discordjs/builders";
+import AO3Wrapper from "../api/ao3wrapper.js";
+
+async function getCommandMention (interaction, cmdName) {
+	let commands = interaction.guild.commands.cache;
+	if (!commands.find(cmd => cmd.name === cmdName && cmd.applicationId === interaction.client.user.id)) {
+		commands = await interaction.guild.commands.fetch();
+	}
+	return `</${cmdName}:${commands.find(cmd => cmd.name === cmdName && cmd.applicationId === interaction.client.user.id) ?.id}>`;
+}
 
 const leftButton = new Builders.ButtonBuilder()
 	.setCustomId("left")
@@ -86,11 +95,52 @@ let row2 = [
 	blankButton4
 ]
 
-export default async function(interaction, pages) {
-	let titles = [];
-	for (let i = 0; i < pages.length; i++) {
-		titles.push(pages[i].data.title || null);
+export default async function(interaction, modal, searchQuery) {
+  try {
+		await modal.deferReply();
+	} catch (e) {
+		// ignore
 	}
+	// Get search results
+	const AO3 = new AO3Wrapper();
+	const searchResults = await AO3.searchWorks(searchQuery);
+	let resultsTotal = searchResults.length;
+	let embeds = [];
+	let searchPage = 1;
+
+	// Are there any results?
+	if (resultsTotal.length === 0) {
+		return await modal.editReply({
+			content: "No results found.",
+			ephemeral: true
+		});
+	}
+
+	// Create embeds (we'll use 5 results per page)
+	let resultsPerPage = 5;
+	let pagesTotal = Math.ceil(resultsTotal / resultsPerPage);
+	let currentPage = 0;
+	for (let i = 0; i < resultsTotal; i += resultsPerPage) {
+		let embed = new Builders.EmbedBuilder()
+			.setColor(global.config.colors.default)
+			.setTitle(`Fanfiction search results`)
+			.setDescription("Read a fanfiction by using " + await getCommandMention(interaction, "read") + " <id>.")
+
+		// Add results to embed
+		for (let j = i; j < i + resultsPerPage; j++) {
+			let result = searchResults[j];
+			if (result) {
+				embed.addFields({
+					name: `${result.title} by ${result.author || "Anonymous"}`,
+					// Try to get summary, if no summary then say "No summary available". If summary too long (256), trim it, and trim newlines from beginning and end.
+					value: "ID: `" + result.id + "`\n" + "[Read online](https://archiveofourown.org/works/" + result.id + ")\n" + (result.summary ? (result.summary.length > 256 ? result.summary.trim().substring(0, 253) + "..." : result.summary.trim()) : "No summary available.")
+				});
+			}
+		}
+
+		embeds.push(embed);
+	}
+
 	let actionRow1 = new Builders.ActionRowBuilder();
 	let actionRow2 = new Builders.ActionRowBuilder();
 	let page = 0;
@@ -103,7 +153,7 @@ export default async function(interaction, pages) {
 		if (page === 0 && (i === 0 || i === 1)) {
 			button.setDisabled(true);
 		}
-		if (page === pages.length - 1 && (i === 3 || i === 4)) {
+		if (page === embeds.length - 1 && (i === 3 || i === 4)) {
 			button.setDisabled(true);
 		}
 		actionRow1.addComponents([button]);
@@ -111,50 +161,94 @@ export default async function(interaction, pages) {
 	for (let i = 0; i < row2.length; i++) {
 		actionRow2.addComponents([row2[i]]);
 	}
-	try {
-		await interaction.deferReply();
-	} catch (error) {
-		// Do nothing
-	}
-	let reply = await interaction.editReply({
-		content: `Page ${page + 1} of ${pages.length}`,
-		embeds: [pages[page]],
-		components: [actionRow1, actionRow2]
+
+	// Create message
+	let message = await modal.editReply({
+		content: `Page ${currentPage + 1} of ${pagesTotal}`,
+		embeds: [
+			embeds[currentPage]
+		],
+		components: [
+			actionRow1,
+			actionRow2
+		]
 	});
 
-	// Create the button collector
-	const filter = (button) => {
-		button.user.id === interaction.user.id;
-	};
+	// Create collector
+	const filter = i => i.user.id === interaction.user.id
 
-	const collector = await reply.createMessageComponentCollector(filter, {
+	const collector = message.createMessageComponentCollector({
 		filter,
-		timeout: 60000
+		time: 60000
 	});
 
-	collector.on("collect", async (button) => {
+	collector.on("collect", async button => {
 		if (button.user.id !== interaction.user.id) return;
 		// Reset the button collector timeout
 		collector.resetTimer();
 		switch (button.customId) {
 			case 'first':
-				page = 0;
+				currentPage = 0;
 				break;
 			case 'left':
-				if (page > 0) {
-					page--;
+				if (currentPage > 0) {
+					currentPage--;
 				}
 				break;
 			case 'delete':
-				interaction.delete();
+				await modal.deleteReply();
 				return;
 			case 'right':
-				if (page < pages.length - 1) {
-					page++;
+				currentPage++;
+				if (currentPage > pagesTotal - 1) {
+					// Load next 20 results
+					await button.deferUpdate();
+					let newSearchQuery = searchQuery;
+					newSearchQuery["page"] = searchPage + 1;
+					searchPage++;
+					await modal.editReply({
+						content: `Loading pages ${currentPage + 1} through ${currentPage + 4}...`,
+						embeds: [],
+						components: []
+					});
+					const newSearchResults = await AO3.searchWorks(newSearchQuery);
+					if (newSearchResults.length === 0) {
+						currentPage--;
+						return await button.editReply({
+							content: "No more results found.",
+							ephemeral: true
+						});
+					} else {
+						// Add new results to searchResults
+						searchResults.push(...newSearchResults);
+						resultsTotal = searchResults.length;
+						pagesTotal = Math.ceil(resultsTotal / resultsPerPage);
+						// Create new embeds
+						for (let i = 0; i < newSearchResults.length; i += resultsPerPage) {
+							let embed = new Builders.EmbedBuilder()
+								.setColor(global.config.colors.default)
+								.setTitle(`Fanfiction search results`)
+								.setDescription("Read a fanfiction by using " + await getCommandMention(interaction, "read") + " <id>.")
+
+							// Add results to embed
+							for (let j = i; j < i + resultsPerPage; j++) {
+								let result = newSearchResults[j];
+								if (result) {
+									embed.addFields({
+										name: `${result.title} by ${result.author || "Anonymous"}`,
+										// Try to get summary, if no summary then say "No summary available". If summary too long (256), trim it, and trim newlines from beginning and end.
+										value: "ID: `" + result.id + "`\n" + "[Read online](https://archiveofourown.org/works/" + result.id + ")\n" + (result.summary ? (result.summary.length > 256 ? result.summary.trim().substring(0, 253) + "..." : result.summary.trim()) : "No summary available.")
+									});
+								}
+							}
+
+							embeds.push(embed);
+						}
+					}
 				}
 				break;
 			case 'last':
-				page = pages.length - 1;
+				currentPage = embeds.length - 1;
 				break;
 			case 'search':
 				// Build a modal
@@ -187,11 +281,12 @@ export default async function(interaction, pages) {
 					// Get the input
 					let input = modalSubmission.fields.getTextInputValue("searchInput");
 					if (isNaN(input)) {
-						// Search for the title
+						// Search for the query in the embeds
+						let query = input.toLowerCase();
 						let found = false;
-						for (let i = 0; i < titles.length; i++) {
-							if (titles[i].toLowerCase().includes(input.toLowerCase())) {
-								page = i;
+						for (let i = 0; i < embeds.length; i++) {
+							if (embeds[i].description.toLowerCase().includes(query) || embeds[i].title.toLowerCase().includes(query)) {
+								currentPage = i;
 								found = true;
 								break;
 							}
@@ -205,14 +300,14 @@ export default async function(interaction, pages) {
 						}
 					} else {
 						// Search for the page number
-						if (input > pages.length || input < 1) {
+						if (input > embeds.length || input < 1) {
 							await modalSubmission.reply({
 								content: "No page found",
 								ephemeral: true
 							});
 							return;
 						}
-						page = input - 1;
+						currentPage = input - 1;
 					}
 					// Update the page
 					let actionRow1 = new Builders.ActionRowBuilder();
@@ -223,10 +318,10 @@ export default async function(interaction, pages) {
 							.setCustomId(row1[i].data.custom_id)
 							.setStyle(row1[i].data.style)
 							.setEmoji(row1[i].data.emoji)
-						if (page === 0 && (i === 0 || i === 1)) {
+						if (currentPage === 0 && (i === 0 || i === 1)) {
 							button.setDisabled(true);
 						}
-						if (page === pages.length - 1 && (i === 3 || i === 4)) {
+						if (currentPage === embeds.length - 1 && (i === 4)) {
 							button.setDisabled(true);
 						}
 						actionRow1.addComponents([button]);
@@ -241,9 +336,9 @@ export default async function(interaction, pages) {
 					});
 
 					// Send the new page
-					await interaction.editReply({
-						content: `Page ${page + 1} of ${pages.length}`,
-						embeds: [pages[page]],
+					await modal.editReply({
+						content: `Page ${currentPage + 1} of ${embeds.length}`,
+						embeds: [embeds[page]],
 						components: [actionRow1, actionRow2]
 					});
 				}
@@ -265,10 +360,10 @@ export default async function(interaction, pages) {
 				.setCustomId(row1[i].data.custom_id)
 				.setStyle(row1[i].data.style)
 				.setEmoji(row1[i].data.emoji)
-			if (page === 0 && (i === 0 || i === 1)) {
+			if (currentPage === 0 && (i === 0 || i === 1)) {
 				button.setDisabled(true);
 			}
-			if (page === pages.length - 1 && (i === 3 || i === 4)) {
+			if (currentPage === embeds.length - 1 && (i === 4)) {
 				button.setDisabled(true);
 			}
 			actionRow1.addComponents([button]);
@@ -278,9 +373,9 @@ export default async function(interaction, pages) {
 		}
 
 		// Send the new page
-		await interaction.editReply({
-			content: `Page ${page + 1} of ${pages.length}`,
-			embeds: [pages[page]],
+		await modal.editReply({
+			content: `Page ${currentPage + 1} of ${embeds.length}`,
+			embeds: [embeds[currentPage]],
 			components: [actionRow1, actionRow2]
 		});
 	});
@@ -305,13 +400,13 @@ export default async function(interaction, pages) {
 			}
 
 			// Send the new page
-			await interaction.editReply({
-				content: `Page ${page + 1} of ${pages.length}`,
-				embeds: [pages[page]],
+			await modal.editReply({
+				content: `Page ${page + 1} of ${embeds.length}`,
+				embeds: [embeds[page]],
 				components: [actionRow1, actionRow2]
 			});
 		} catch (e) {
 			// Do nothing since message was deleted
 		}
 	});
-};
+}

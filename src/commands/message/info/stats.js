@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import ms from 'ms';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import chalk from 'chalk';
 
 // Polyfill for __dirname
 import { __ } from '../../../utils/polyfill/__.js';
@@ -10,11 +11,11 @@ const { __filename, __dirname } = __(import.meta);
 
 function buildGaugeString (value, max) {
 	// Max gauge width excluding the side borders is 20.
-	const gaugeWidth = 20;
+	const gaugeWidth = 50;
 	const gaugeFill = "█";
 	const gaugeEmpty = " ";
 	let calculatedValue = value / max * gaugeWidth;
-	let string = "`";
+	let string = "";
 	for (let i = 0; i < gaugeWidth; i++) {
 		if (i < calculatedValue) {
 			string += gaugeFill;
@@ -22,14 +23,20 @@ function buildGaugeString (value, max) {
 			string += gaugeEmpty;
 		}
 	}
-	return string + "`";
+	return string.split("").slice(0, Math.round(gaugeWidth * 0.7)).join("") +
+		chalk.yellow(string.split("").slice(Math.round(gaugeWidth * 0.7), Math.round(gaugeWidth * 0.9)).join("")) +
+		chalk.red(string.split("").slice(Math.round(gaugeWidth * 0.9)).join(""));
+}
+
+function toCodeBlock (string, language = "") {
+	return `\`\`\`${language}\n${string}\`\`\``;
 }
 
 function calculateLoadPercentAndReturnAString() {
 	// The string will be formatted as "<average load>% <gauge>"
 	const load = os.loadavg();
 	const averageLoad = Math.round(load[0] * 100);
-	const gauge = buildGaugeString(averageLoad, 100);
+	const gauge = toCodeBlock(buildGaugeString(averageLoad, 100), "ansi");
 	return `${averageLoad}% ${gauge}`;
 }
 
@@ -37,7 +44,7 @@ function calculateMemoryUsageAndReturnAString() {
 	const memoryUsage = process.memoryUsage();
 	const totalMemory = Math.round(memoryUsage.heapTotal / 1024 / 1024);
 	const usedMemory = Math.round(memoryUsage.heapUsed / 1024 / 1024);
-	const gauge = buildGaugeString(usedMemory, totalMemory);
+	const gauge = toCodeBlock(buildGaugeString(usedMemory, totalMemory), "ansi");
 	return `${usedMemory}/${totalMemory}MB ${gauge}`;
 }
 
@@ -45,7 +52,7 @@ function calculateSystemMemoryUsageAndReturnAString() {
 	const memoryUsage = os.freemem();
 	const totalMemory = Math.round(os.totalmem() / 1024 / 1024);
 	const usedMemory = Math.round(memoryUsage / 1024 / 1024);
-	const gauge = buildGaugeString(usedMemory, totalMemory);
+	const gauge = toCodeBlock(buildGaugeString(usedMemory, totalMemory), "ansi");
 	return `${usedMemory}/${totalMemory}MB ${gauge}`;
 }
 

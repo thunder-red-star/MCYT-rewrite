@@ -8,6 +8,17 @@ import { __ } from "../../../utils/polyfill/__.js";
 import ms from "ms";
 const { __filename, __dirname } = __(import.meta);
 
+async function getCommandMention (interaction, cmdName) {
+	let commands = interaction.guild.commands.cache;
+	if (!commands.find(cmd => cmd.name === cmdName && cmd.applicationId === interaction.client.user.id)) {
+		commands = await interaction.guild.commands.fetch();
+	}
+	if (!commands.find(cmd => cmd.name === cmdName && cmd.applicationId === interaction.client.user.id)) {
+		return undefined;
+	}
+	return `</${cmdName}:${commands.find(cmd => cmd.name === cmdName && cmd.applicationId === interaction.client.user.id) ?.id}>`;
+}
+
 export default {
 	name: "help",
 	enabled: true,
@@ -116,7 +127,7 @@ export default {
 							});
 						for (let command of currentCommands) {
 							embed.addFields([{
-								name: `</${command.name}:${guildCommands.find(cmd => cmd.name === command.name && cmd.applicationId === client.user.id) ?.id}>`,
+								name: await getCommandMention(interaction, command.name) || `/${command.name} (Please deploy this command!)`,
 								value: command.shortDescription,
 								inline: false
 							}]);
@@ -132,7 +143,7 @@ export default {
 						});
 					for (let command of commands) {
 						embed.addFields([{
-							name: `</${command.name}:${guildCommands.find(cmd => cmd.name === command.name && cmd.applicationId === client.user.id) ?.id}>`,
+							name: await getCommandMention(interaction, command.name) || `/${command.name} (Please deploy this command!)`,
 							value: command.shortDescription,
 							inline: false
 						}]);
