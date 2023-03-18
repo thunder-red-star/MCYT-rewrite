@@ -35,7 +35,6 @@ export default {
 			.addFields([{
 				name: "Rewrite info",
 				value: `This bot was already written in Discord.js v12, but is currently being rewritten in v14 this year.`
-
 			}]);
 
 		await interaction.reply({embeds: [embed]});

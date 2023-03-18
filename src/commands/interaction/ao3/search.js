@@ -14,6 +14,10 @@ export default {
 	cooldown: 5_000,
 	execute: async function (interaction, client, args, Discord) {
 		// Build modal display it
+		return await interaction.reply({
+			content: "We have disabled this function because we are rewriting an entire core library of AO3. Check back soon!",
+		});
+		// we don't have to get to this code yet.
 		const modal = new Builders.ModalBuilder()
 			.setTitle("AO3 Search")
 			.setCustomId("ao3search")

@@ -5,6 +5,7 @@ import * as Builders from "@discordjs/builders";
 const leftButton = new Builders.ButtonBuilder()
 	.setCustomId("left")
 	.setStyle(1)
+	.setLabel(" ")
 	.setEmoji({
 		name: "⬅️",
 		id: global.config.emojis.paginator.left,
@@ -12,7 +13,7 @@ const leftButton = new Builders.ButtonBuilder()
 	});
 const rightButton = new Builders.ButtonBuilder()
 	.setCustomId("right")
-	.setStyle(1)
+	.setStyle(1).setLabel(" ")
 	.setEmoji({
 		name: "➡️",
 		id: global.config.emojis.paginator.right,
@@ -20,7 +21,7 @@ const rightButton = new Builders.ButtonBuilder()
 	});
 const stopButton = new Builders.ButtonBuilder()
 	.setCustomId("delete")
-	.setStyle(4)
+	.setStyle(4).setLabel(" ")
 	.setEmoji({
 		name: "⏹️",
 		id: global.config.emojis.paginator.delete,
@@ -28,7 +29,7 @@ const stopButton = new Builders.ButtonBuilder()
 	});
 const firstButton = new Builders.ButtonBuilder()
 	.setCustomId("first")
-	.setStyle(1)
+	.setStyle(1).setLabel(" ")
 	.setEmoji({
 		name: "⏪",
 		id: global.config.emojis.paginator.first,
@@ -36,7 +37,7 @@ const firstButton = new Builders.ButtonBuilder()
 	});
 const lastButton = new Builders.ButtonBuilder()
 	.setCustomId("last")
-	.setStyle(1)
+	.setStyle(1).setLabel(" ")
 	.setEmoji({
 		name: "⏩",
 		id: global.config.emojis.paginator.last,
@@ -44,31 +45,20 @@ const lastButton = new Builders.ButtonBuilder()
 	});
 const searchButton = new Builders.ButtonBuilder()
 	.setCustomId("search")
-	.setStyle(1)
+	.setStyle(1).setLabel(" ")
 	.setEmoji({
 		name: "🔍",
 		id: global.config.emojis.paginator.search,
 		animated: false
 	});
-const blankButton1 = new Builders.ButtonBuilder()
-	.setLabel(" ")
-	.setStyle(2)
-	.setCustomId("blank1");
 
-const blankButton2 = new Builders.ButtonBuilder()
-	.setLabel(" ")
-	.setStyle(2)
-	.setCustomId("blank2");
-
-const blankButton3 = new Builders.ButtonBuilder()
-	.setLabel(" ")
-	.setStyle(2)
-	.setCustomId("blank3");
-
-const blankButton4 = new Builders.ButtonBuilder()
-	.setLabel(" ")
-	.setStyle(2)
-	.setCustomId("blank4");
+function generateBlankButton() {
+	return new Builders.ButtonBuilder()
+		.setCustomId(Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15))
+		.setStyle(2)
+		.setLabel("\u200b")
+		.setDisabled(true);
+}
 
 let row1 = [
 	firstButton,
@@ -79,11 +69,11 @@ let row1 = [
 ]
 
 let row2 = [
-	blankButton1,
-	blankButton2,
+	generateBlankButton(),
+	generateBlankButton(),
 	stopButton,
-	blankButton3,
-	blankButton4
+	generateBlankButton(),
+	generateBlankButton()
 ]
 
 export default async function(interaction, pages) {
@@ -146,7 +136,8 @@ export default async function(interaction, pages) {
 				}
 				break;
 			case 'delete':
-				interaction.delete();
+				// discord devs making the worst fucking api in existence
+				await interaction.deleteReply();
 				return;
 			case 'right':
 				if (page < pages.length - 1) {

@@ -50,29 +50,13 @@ const searchButton = new Builders.ButtonBuilder()
 		id: global.config.emojis.paginator.search,
 		animated: false
 	});
-const blankButton1 = new Builders.ButtonBuilder()
-	.setLabel(" ")
-	.setStyle(2)
-	.setDisabled(true)
-	.setCustomId("blank1");
-
-const blankButton2 = new Builders.ButtonBuilder()
-	.setLabel(" ")
-	.setStyle(2)
-	.setDisabled(true)
-	.setCustomId("blank2");
-
-const blankButton3 = new Builders.ButtonBuilder()
-	.setLabel(" ")
-	.setStyle(2)
-	.setDisabled(true)
-	.setCustomId("blank3");
-
-const blankButton4 = new Builders.ButtonBuilder()
-	.setLabel(" ")
-	.setStyle(2)
-	.setDisabled(true)
-	.setCustomId("blank4");
+function generateBlankButton() {
+	return new Builders.ButtonBuilder()
+		.setCustomId(Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15))
+		.setStyle(2)
+		.setLabel("\u200b")
+		.setDisabled(true);
+}
 
 
 let row1 = [
@@ -84,11 +68,11 @@ let row1 = [
 ]
 
 let row2 = [
-	blankButton1,
-	blankButton2,
+	generateBlankButton(),
+	generateBlankButton(),
 	stopButton,
-	blankButton3,
-	blankButton4
+	generateBlankButton(),
+	generateBlankButton()
 ]
 
 export default async function(message, pages) {
