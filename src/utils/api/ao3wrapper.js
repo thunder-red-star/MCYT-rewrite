@@ -1,5 +1,9 @@
 import Axios from 'axios';
 
+/*****************************************************
+ * THIS IS LEGACY CODE. DO NOT USE IT FOR NEW PROJECTS.
+ * USE THE AO3 API INSTEAD.
+ ****************************************************/
 function dictToQuery(dict) {
 	let query = "";
 	let queryKeys = Object.keys(dict);

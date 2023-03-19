@@ -13,11 +13,6 @@ export default {
 	userPermissions: [],
 	cooldown: 5_000,
 	execute: async function (interaction, client, args, Discord) {
-		// Build modal display it
-		return await interaction.reply({
-			content: "We have disabled this function because we are rewriting an entire core library of AO3. Check back soon!",
-		});
-		// we don't have to get to this code yet.
 		const modal = new Builders.ModalBuilder()
 			.setTitle("AO3 Search")
 			.setCustomId("ao3search")
@@ -61,7 +56,7 @@ export default {
 				new Builders.ActionRowBuilder()
 					.addComponents(new Builders.TextInputBuilder()
 						.setCustomId("relationship")
-						.setPlaceholder("Dream and George")
+						.setPlaceholder("Dream and GeorgeNotFound")
 						.setLabel("Relationships")
 						.setRequired(false)
 						.setStyle(1))
@@ -96,12 +91,6 @@ export default {
 			}
 		}
 
-		await fanfictionSearchPaginator(interaction, modalSubmission, {
-			allFields: allFields,
-			title: title,
-			author: author,
-			character: character,
-			relationship: relationship
-		})
+		await fanfictionSearchPaginator(interaction, modalSubmission, allFields, title, author, character, relationship);
 	}
 }

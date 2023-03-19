@@ -44,5 +44,13 @@ export default async function create (error, interaction, command = null) {
 		]);
 	}
 
-	await interaction.editReply({embeds: [ErrorMessage]});
+	try {
+		await interaction.editReply({embeds: [ErrorMessage]});
+	} catch (error) {
+		try {
+			await interaction.channel.send({embeds: [ErrorMessage]});
+		} catch (error) {
+			// Ignore
+		}
+	}
 }

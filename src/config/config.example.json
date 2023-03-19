@@ -26,8 +26,5 @@
     "check": "CUSTOM_EMOJI_ID_HERE",
     "warning": "CUSTOM_EMOJI_ID_HERE",
     "cross": "CUSTOM_EMOJI_ID_HERE"
-  },
-  "ao3API": {
-    "url": "SELFHOSTED_AO3_API_URL_HERE",
   }
 }

@@ -1,8 +1,8 @@
-// Message command paginator (use buttons)
-
 import * as Builders from "@discordjs/builders";
-// import AO3Wrapper from "../api/ao3wrapper.js";
+import Turndown from "turndown";
 import AO3 from "ao3";
+
+const turndownService = new Turndown();
 
 async function getCommandMention (interaction, cmdName) {
 	let commands = interaction.guild.commands.cache;
@@ -85,60 +85,117 @@ let row2 = [
 	generateBlankButton()
 ]
 
-export default async function(interaction, modal, allFields, title, author, character, relationship) {
-  try {
-		await modal.deferReply();
-	} catch (e) {
-		// ignore
-	}
-	// Get search results
-	const search = new AO3.Search(
-		allFields ? allFields : "",
-		title ? title : "",
-		author ? author : "",
-		character ? character : "",
-		relationship ? relationship : ""
-	);
-	await search.update();
-	let searchResults = search.results;
-	let resultsTotal = searchResults.length;
+let tagsToEmojis = {
+	"Not Rated": "no_tags",
+	"General Audiences": "general_audiences",
+	"Teen And Up Audiences": "teen_and_up",
+	"Mature": "mature",
+	"Explicit": "explicit",
+	"F/M": "female_male",
+	"F/F": "female_female",
+	"Gen": "no_relationships",
+	"M/M": "male_male",
+	"Multi": "multiple_relationships",
+	"Other": "no_tags"
+}
+
+function buildAO3Emoji(emojiName) {
+	return global.config.emojis.ao3[emojiName] ? "<:" + emojiName + ":" + global.config.emojis.ao3[emojiName] + ">" : null;
+}
+
+export default async function(interaction, work) {
 	let embeds = [];
-	let searchPage = 1;
-
-	console.log(searchResults);
-
-	// Are there any results?
-	if (resultsTotal.length === 0) {
-		return await modal.editReply({
-			content: "No results found.",
-			ephemeral: true
-		});
+	await work.reload(false);
+	await work.loadChapters(false);
+	let author = work.authors[0];
+	await author.reload();
+	// Build title page embed.
+	let authorObject = {
+		name: author.name,
+		url: author.url,
 	}
-
-	// Create embeds (we'll use 5 results per page)
-	let resultsPerPage = 5;
-	let pagesTotal = Math.ceil(resultsTotal / resultsPerPage);
-	let currentPage = 0;
-	for (let i = 0; i < resultsTotal; i += resultsPerPage) {
-		let embed = new Builders.EmbedBuilder()
-			.setColor(global.config.colors.default)
-			.setTitle(`Fanfiction search results`)
-			.setDescription("Read a fanfiction by using " + await getCommandMention(interaction, "read") + " <id>.")
-
-		// Add results to embed
-		for (let j = i; j < i + resultsPerPage; j++) {
-			let result = searchResults[j];
-			if (result) {
-				embed.addFields({
-					name: `${result.title} by ${result.author || "Anonymous"}`,
-					// Try to get summary, if no summary then say "No summary available". If summary too long (256), trim it, and trim newlines from beginning and end.
-					value: "ID: `" + result.id + "`\n" + "[Read online](https://archiveofourown.org/works/" + result.id + ")\n" + (result.summary ? (result.summary.length > 256 ? result.summary.trim().substring(0, 253) + "..." : result.summary.trim()) : "No summary available.")
-				});
-			}
+	if (author.avatar && author.avatar !== "/images/skins/iconsets/default/icon_user.png") {
+		authorObject.icon_url = author.avatar;
+	}
+	let titleEmbed = new Builders.EmbedBuilder()
+		.setTitle(work.title)
+		.setURL(work.url)
+		.setColor(global.config.colors.default)
+		.setTimestamp()
+		.setAuthor(authorObject);
+	// Build a field that contains the four icons for content rating, relationship, content warnings, and work status.
+	let icons = [];
+	if (work.ratings) {
+		icons.push(buildAO3Emoji(tagsToEmojis[work.ratings[0]]));
+	}
+	if (work.categories && work.categories.length > 0) {
+		icons.push(buildAO3Emoji(tagsToEmojis[work.categories[0]]));
+	} else {
+		icons.push(buildAO3Emoji("no_relationships"));
+	}
+	if (work.warnings) {
+		// If No Archive Warnings Apply, add "no_tags" emoji.
+		if (work.warnings.length === 1 && work.warnings[0] === "No Archive Warnings Apply") {
+			icons.push(buildAO3Emoji("no_tags"));
 		}
-
-		embeds.push(embed);
+		// If Creator Chose Not To Use Archive Warnings, add "maybe_warnings" emoji.
+		else if (work.warnings.length === 1 && work.warnings[0] === "Creator Chose Not To Use Archive Warnings") {
+			icons.push(buildAO3Emoji("maybe_warnings"));
+		}
+		// If there are warnings, add "warnings" emoji.
+		else {
+			icons.push(buildAO3Emoji("warnings"));
+		}
 	}
+	if (work.status) {
+		// If work.status is "Completed", add "work_complete" emoji.
+		if (work.status === "Completed") {
+			icons.push(buildAO3Emoji("work_complete"));
+		} else {
+			icons.push(buildAO3Emoji("work_in_progress"));
+		}
+	}
+	titleEmbed.addFields([{
+		name: "Tags",
+		value: icons.slice(0, 2).join("") + "\n" + icons.slice(2, 4).join(""),
+		inline: true
+	}]);
+	titleEmbed.setDescription(work.summary);
+	// Build a field that contains the number of chapters, words
+	let contentStats = [];
+	if (work.nChapters) {
+		contentStats.push(work.nChapters + " chapters");
+	}
+	if (work.wordCount) {
+		contentStats.push(work.wordCount + " words");
+	}
+	titleEmbed.addFields([{
+		name: "Content Stats",
+		value: contentStats.join("\n"),
+		inline: true
+	}]);
+	// Build a field that contains the number of kudos, bookmarks, and hits.
+	let stats = [];
+	if (work.kudos) {
+		stats.push(work.kudos + " kudos");
+	}
+	if (work.bookmarks) {
+		stats.push(work.bookmarks + " bookmarks");
+	}
+	if (work.hits) {
+		stats.push(work.hits + " hits");
+	}
+	titleEmbed.addFields([{
+		name: "Stats",
+		value: stats.join("\n"),
+		inline: true
+	}]);
+	// Add the title embed to the embeds array.
+	embeds.push(titleEmbed);
+
+	let currentPage = 0;
+	let nChaptersLoaded = 0;
+	let pagesTotal = 1;
 
 	let actionRow1 = new Builders.ActionRowBuilder();
 	let actionRow2 = new Builders.ActionRowBuilder();
@@ -152,7 +209,7 @@ export default async function(interaction, modal, allFields, title, author, char
 		if (page === 0 && (i === 0 || i === 1)) {
 			button.setDisabled(true);
 		}
-		if (page === embeds.length - 1 && (i === 3 || i === 4)) {
+		if (page === embeds.length - 1 && (i === 4)) {
 			button.setDisabled(true);
 		}
 		actionRow1.addComponents([button]);
@@ -162,7 +219,7 @@ export default async function(interaction, modal, allFields, title, author, char
 	}
 
 	// Create message
-	let message = await modal.editReply({
+	let message = await interaction.editReply({
 		content: `Page ${currentPage + 1} of ${pagesTotal}`,
 		embeds: [
 			embeds[currentPage]
@@ -195,55 +252,58 @@ export default async function(interaction, modal, allFields, title, author, char
 				}
 				break;
 			case 'delete':
-				await modal.deleteReply();
+				await interaction.deleteReply();
 				return;
 			case 'right':
 				currentPage++;
 				if (currentPage > pagesTotal - 1) {
 					// Load next 20 results
 					await button.deferUpdate();
-					searchPage++;
-					await modal.editReply({
-						content: `Loading pages ${currentPage + 1} through ${currentPage + 4}...`,
-						embeds: [],
-						components: []
-					});
-					search.page = searchPage;
-					await search.update();
-					let newSearchResults = search.results;
-					if (search.results.length === 0) {
-						currentPage--;
-						return await button.editReply({
-							content: "No more results found.",
-							ephemeral: true
-						});
-					} else {
-						// Add new results to searchResults
-						searchResults.push(...newSearchResults);
-						resultsTotal = searchResults.length;
-						pagesTotal = Math.ceil(resultsTotal / resultsPerPage);
-						// Create new embeds
-						for (let i = 0; i < newSearchResults.length; i += resultsPerPage) {
-							let embed = new Builders.EmbedBuilder()
+					// Load next chapter
+					if (nChaptersLoaded < work.nChapters) {
+						let nextChapter = work.chapters[nChaptersLoaded];
+						await nextChapter.reload();
+						nChaptersLoaded++;
+						// Now build embeds for the chapter. The first embed will have the title and summary.
+						let chapterEmbed = new Builders.EmbedBuilder()
+							.setTitle(nextChapter.title)
+							.setDescription(nextChapter.summary ? (nextChapter.summary.length > 2000 ? nextChapter.summary.substring(0, 2000) + "..." : nextChapter.summary) : "No summary available.")
+							.setFooter({
+								text: `Chapter ${nChaptersLoaded} of ${work.nChapters}`
+							})
+							.setColor(global.config.colors.default)
+						embeds.push(chapterEmbed);
+						// Now build embeds for the chapter content. We'll replace \n\n with \n, then split on \n.
+						let chapterContent = nextChapter.text.replace(/\n\n/g, "\n").split("\n");
+						// Now we'll build embeds for the chapter content. Each embed can only store 2048 characters in the description.
+						// What we'll do is add paragraphs to the embed, check if adding the next paragraph will exceed 2048 characters, and if it does, we'll push the embed to the embeds array.
+						let nParagraphs = 0;
+						while (nParagraphs < chapterContent.length) {
+							let currentTextLength = 0;
+							let paragraph = turndownService.turndown(chapterContent[nParagraphs]);
+							let currentText = paragraph;
+							let paragraphEmbed = new Builders.EmbedBuilder()
+								.setTitle(nextChapter.title)
 								.setColor(global.config.colors.default)
-								.setTitle(`Fanfiction search results`)
-								.setDescription("Read a fanfiction by using " + await getCommandMention(interaction, "read") + " <id>.")
-
-							// Add results to embed
-							for (let j = i; j < i + resultsPerPage; j++) {
-								let result = newSearchResults[j];
-								if (result) {
-									embed.addFields({
-										name: `${result.title} by ${result.author || "Anonymous"}`,
-										// Try to get summary, if no summary then say "No summary available". If summary too long (256), trim it, and trim newlines from beginning and end.
-										value: "ID: `" + result.id + "`\n" + "[Read online](https://archiveofourown.org/works/" + result.id + ")\n" + (result.summary ? (result.summary.length > 256 ? result.summary.trim().substring(0, 253) + "..." : result.summary.trim()) : "No summary available.")
-									});
+								.setFooter({
+									text: `Chapter ${nChaptersLoaded} of ${work.nChapters}`
+								})
+							while (currentText.length + paragraph.length < 2048) {
+								paragraphEmbed.setDescription(currentText);
+								nParagraphs++;
+								if (nParagraphs < chapterContent.length) {
+									paragraph = chapterContent[nParagraphs];
+									currentText += "\n\n" + turndownService.turndown(paragraph);
+								}
+								else {
+									break;
 								}
 							}
-
-							embeds.push(embed);
+							embeds.push(paragraphEmbed);
 						}
 					}
+					// Update the total number of pages
+					pagesTotal = embeds.length;
 				}
 				break;
 			case 'last':
@@ -284,7 +344,7 @@ export default async function(interaction, modal, allFields, title, author, char
 						let query = input.toLowerCase();
 						let found = false;
 						for (let i = 0; i < embeds.length; i++) {
-							if (embeds[i].description.toLowerCase().includes(query) || embeds[i].title.toLowerCase().includes(query)) {
+							if (embeds[i].data.description.toLowerCase().includes(query) || embeds[i].title.toLowerCase().includes(query)) {
 								currentPage = i;
 								found = true;
 								break;
@@ -335,7 +395,7 @@ export default async function(interaction, modal, allFields, title, author, char
 					});
 
 					// Send the new page
-					await modal.editReply({
+					await interaction.editReply({
 						content: `Page ${currentPage + 1} of ${embeds.length}`,
 						embeds: [embeds[page]],
 						components: [actionRow1, actionRow2]
@@ -372,7 +432,7 @@ export default async function(interaction, modal, allFields, title, author, char
 		}
 
 		// Send the new page
-		await modal.editReply({
+		await interaction.editReply({
 			content: `Page ${currentPage + 1} of ${embeds.length}`,
 			embeds: [embeds[currentPage]],
 			components: [actionRow1, actionRow2]
@@ -399,7 +459,7 @@ export default async function(interaction, modal, allFields, title, author, char
 			}
 
 			// Send the new page
-			await modal.editReply({
+			await interaction.editReply({
 				content: `Page ${page + 1} of ${embeds.length}`,
 				embeds: [embeds[page]],
 				components: [actionRow1, actionRow2]
